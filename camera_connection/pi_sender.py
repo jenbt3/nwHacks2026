@@ -6,8 +6,8 @@ import pickle
 import struct
 import time
 
-hostIP = '' # server IP
-port = 0000 # server port
+hostIP = '' # IP
+port =  # port
 
 #connect to backend server
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,21 +21,21 @@ cam.set(4, 480)
 
 try:
     while True:
-        # capture a single frame from the camera
+        #captures frame from camera; true if captured
         ret, frame = cam.read()
         
-        # serialize the frame (turn the image into a stream of 1s and 0s)
+        #turn the image into bytes
         data = pickle.dumps(frame)
         
-        # pack the data and send it over the network
-        message = struct.pack("Q", len(data)) + data
+        #pack the data and send it over the network
+        message = struct.pack("Q", len(data)) + data #adds photo of data
         client_socket.sendall(message)
-        size = len(data)
+        size = len(data) #
 
-        # Send the size of the frame first, then the frame itself
+        #send the size of the frame, then the frame itself
         client_socket.sendall(struct.pack(">L", size) + data)
         
-        if cv2.waitKey(1) == ord('q'):
+        if cv2.waitKey(1) == ord('q'): # exit if 'q' is pressed
             break
 finally:
     cam.release()
