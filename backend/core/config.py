@@ -1,17 +1,15 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 class Settings(BaseSettings):
     # API Keys (Loaded from .env)
-    GEMINI_API_KEY: str
-    ELEVENLABS_API_KEY: str
-    
-    # Database settings
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data/bridge.db"
+    GEMINI_API_KEY: str = Field(..., min_length=10)
+    ELEVENLABS_API_KEY: str = Field(..., min_length=10)
     
     # AI Personas
-    VOICE_ID: str = "JBFqnCBsd6RMkjVDRZzb" # Warm/Empathic persona
+    VOICE_ID: str = "JBFqnCBsd6RMkjVDRZzb"
     
-    class Config:
-        env_file = ".env"
+    # Pydantic V2 style config
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

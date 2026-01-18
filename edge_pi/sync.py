@@ -3,18 +3,22 @@ import numpy as np
 import base64
 
 def load_knowledge_base(api_url):
-    """Syncs vectors from Backend using Base64 decoding."""
     try:
-        response = requests.get(f"{api_url}/people/sync")
+        response = requests.get(f"{api_url}/people/sync", timeout=10)
+        response.raise_for_status()
         visitors = response.json()
         
-        kb = {}
+        kb = {} 
         for v in visitors:
-            # FIX: Use base64 instead of hex
-            enc_bytes = base64.b64decode(v['encoding'])
-            encoding = np.frombuffer(enc_bytes, dtype=np.float64)
+            # Decode the Base64 string provided by the FastAPI JSON response
+            raw_bytes = base64.b64decode(v['encoding'])
+            
+            # Reconstruct the float32 array from the raw bytes
+            encoding = np.frombuffer(raw_bytes, dtype=np.float32)
             kb[v['id']] = encoding
+            
+        print(f"[Sync] Successfully loaded {len(kb)} identities.")
         return kb
     except Exception as e:
-        print(f"Sync failed: {e}")
+        print(f"[Sync] Critical Error: {e}")
         return {}

@@ -2,48 +2,56 @@ from deepface import DeepFace
 from scipy.spatial.distance import cosine
 import numpy as np
 
-# Use 'VGG-Face' as per your existing file
+# Use 'VGG-Face' as per architecture
 MODEL_NAME = "VGG-Face" 
 
-def identify_face(frame, knowledge_base, threshold=0.35):
+def warm_up_model():
+    """Pre-loads the model into RAM to ensure <500ms inference on first run."""
+    print("[Vision] Warming up VGG-Face model...")
+    # A tiny black image to trigger the internal model load
+    fake_img = np.zeros((224, 224, 3), dtype=np.uint8)
+    try:
+        DeepFace.represent(fake_img, model_name=MODEL_NAME, enforce_detection=False)
+        print("[Vision] Model ready.")
+    except Exception as e:
+        print(f"[Vision] Warm-up failed: {e}")
+
+def identify_face(face_roi, knowledge_base, threshold=0.35):
     """
-    Returns the visitor_id if a strong match is found, otherwise returns None.
-    Threshold lowered to 0.35 for stricter 'None' enforcement.
+    Receives a CROPPED face image to skip internal detection.
+    Returns the visitor_id if a strong match is found.
     """
     try:
-        # 1. Inference: Extract live embedding
+        # 1. Inference: Extract embedding from the already-cropped ROI
+        # Using 'skip' prevents DeepFace from wasting CPU re-detecting the face
         results = DeepFace.represent(
-            img_path=frame, 
+            img_path=face_roi, 
             model_name=MODEL_NAME,
-            enforce_detection=True,
-            detector_backend="opencv"
+            enforce_detection=False,
+            detector_backend="skip" 
         )
         
         if not results:
             return None
 
-        live_vec = results[0]["embedding"]
+        live_vec = np.array(results[0]["embedding"], dtype=np.float32)
         best_match_id = None
-        # Start with 'threshold' as the max distance, so anything further is ignored
         min_dist = threshold 
 
         # 2. Optimized Comparison
-        for visitor_id, embeddings in knowledge_base.items():
-            # Support both single vectors and lists of vectors
-            if not isinstance(embeddings, list):
-                embeddings = [embeddings]
+        for visitor_id, stored_vec in knowledge_base.items():
+            # Check for shape mismatch to prevent runtime crashes
+            if live_vec.shape != stored_vec.shape:
+                continue
                 
-            for stored_vec in embeddings:
-                dist = cosine(live_vec, stored_vec)
-                
-                # Only update if this person is CLOSER than the current best AND the threshold
-                if dist < min_dist:
-                    min_dist = dist
-                    best_match_id = visitor_id
+            dist = cosine(live_vec, stored_vec)
+            
+            if dist < min_dist:
+                min_dist = dist
+                best_match_id = visitor_id
 
-        # If no one was closer than 'threshold', best_match_id remains None
         return best_match_id
 
-    except Exception:
-        # Returns None if no face is detected or if an error occurs
+    except Exception as e:
+        print(f"[Vision] Recognition Error: {e}")
         return None

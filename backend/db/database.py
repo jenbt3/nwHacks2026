@@ -1,15 +1,16 @@
 import os
 from pathlib import Path
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-# 1. Define the directory and ensure it exists
-BASE_DIR = Path(__file__).resolve().parent.parent.parent # Points to /backend
+# Force data to stay within the backend/data directory relative to this file
+BASE_DIR = Path(__file__).resolve().parent.parent 
 DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True) # Creates /data if missing
+DATA_DIR.mkdir(parents=True, exist_ok=True) 
 
-# 2. Use the absolute path for the SQLite URL
-DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR}/bridge.db"
+# SQLite absolute path (Unix/Pi standard: 4 slashes total for absolute)
+DB_PATH = DATA_DIR / "bridge.db"
+DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -22,7 +23,9 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False
 )
 
-Base = declarative_base()
+# SQLAlchemy 2.0 Style Base
+class Base(DeclarativeBase):
+    pass
 
 async def get_db():
     async with AsyncSessionLocal() as session:

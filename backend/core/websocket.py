@@ -1,15 +1,18 @@
 import json
+import logging
 from fastapi import WebSocket
+
+# Setup basic logging for debugging connection drops
+logger = logging.getLogger("websocket")
 
 class ConnectionManager:
     def __init__(self):
-        # Using a list is fine for small scale, but consider a set() 
-        # for faster removals if you expect 100+ concurrent caregivers.
-        self.active_connections: list[WebSocket] = []
+        # Using a set for O(1) removals and to prevent duplicate connections
+        self.active_connections: set[WebSocket] = set()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections.add(websocket)
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
@@ -19,12 +22,12 @@ class ConnectionManager:
         """Sends an alert to all active connections and cleans up dead ones."""
         message_json = json.dumps(message)
         
-        # We iterate over a copy [:] so we can safely remove items during the loop
-        for connection in self.active_connections[:]:
+        # Iterate over a copy to allow safe removal during iteration
+        for connection in list(self.active_connections):
             try:
                 await connection.send_text(message_json)
-            except Exception:
-                # If sending fails, the connection is dead; remove it.
+            except Exception as e:
+                logger.warning(f"WebSocket send failed: {e}. Removing connection.")
                 self.disconnect(connection)
 
 # Shared instance for the entire app
