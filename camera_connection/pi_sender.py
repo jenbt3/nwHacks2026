@@ -4,7 +4,6 @@ import cv2
 import socket
 import pickle
 import struct
-import time
 
 hostIP = '' # IP
 port = 0000 # port
@@ -13,14 +12,13 @@ port = 0000 # port
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((hostIP, port)) #change to your server ip and port
 
-#setup camera; 0 is default camera
-cam = cv2.VideoCapture(0)
-
+#setup camera;
+camera = cv2.VideoCapture(1)
 
 try:
     while True:
         #captures frame from camera; true if captured
-        ret, frame = cam.read()
+        ret, frame = camera.read()
         
         #turn the image into bytes
         data = pickle.dumps(frame)
@@ -36,5 +34,5 @@ try:
         if cv2.waitKey(1) == ord('q'): # exit if 'q' is pressed
             break
 finally:
-    cam.release()
+    camera.release()
     client_socket.close()
