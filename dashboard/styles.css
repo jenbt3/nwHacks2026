@@ -1,0 +1,44 @@
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.4);
+}
+
+body {
+    background: radial-gradient(circle at top left, #f0f9ff, #e0f2fe, #fdf4ff);
+    min-height: 100vh;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
+}
+
+@keyframes alert-pulse {
+    0%, 100% { background-color: #be123c; transform: scale(1); }
+    50% { background-color: #e11d48; transform: scale(1.015); }
+}
+
+.critical-alert {
+    animation: alert-pulse 1s infinite ease-in-out;
+    box-shadow: 0 0 40px rgba(225, 29, 72, 0.3);
+}
+
+#joystick-zone {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+}
+
+.visitor-entry {
+    animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
