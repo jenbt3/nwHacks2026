@@ -1,55 +1,58 @@
 from deepface import DeepFace
-import cv2
-import matplotlib.pyplot as plt
+from scipy.spatial.distance import cosine
+import numpy as np
 
-# Path to your image
+# Use 'VGG-Face' as per architecture
+MODEL_NAME = "Facenet512" 
 
-# Compares two faces, returns dictionary of verification results
-# Returns None if a face is not found in one of the images
-def compare_faces(img_path1, img_path2, model_name="VGG-Face", detector_backend="opencv") -> dict:
-    
+def warm_up_model():
+    """Pre-loads the model into RAM to ensure <500ms inference on first run."""
+    print("[Vision] Warming up Facenet512 model...")
+    # A tiny black image to trigger the internal model load
+    fake_img = np.zeros((224, 224, 3), dtype=np.uint8)
     try:
-        # Verify if the faces belong to the same person
-        result = DeepFace.verify(
-            img1_path=img_path1,
-            img2_path=img_path2,
-            model_name=model_name,
-            detector_backend=detector_backend,
-            enforce_detection=True,  # Raise error if no face found
-            align=True,  # Align faces for better accuracy
-            distance_metric="cosine"  # cosine, euclidean, euclidean_l2
+        DeepFace.represent(fake_img, model_name=MODEL_NAME, enforce_detection=False)
+        print("[Vision] Model ready.")
+    except Exception as e:
+        print(f"[Vision] Warm-up failed: {e}")
+
+def identify_face(face_roi, knowledge_base, threshold=0.35):
+    """
+    Receives a CROPPED face image to skip internal detection.
+    Returns the visitor_id if a strong match is found.
+    """
+    try:
+        # 1. Inference: Extract embedding from the already-cropped ROI
+        # Using 'skip' prevents DeepFace from wasting CPU re-detecting the face
+        results = DeepFace.represent(
+            img_path=face_roi, 
+            model_name=MODEL_NAME,
+            enforce_detection=False,
+            detector_backend="skip",
+            align=True
         )
-        return result
         
-    except ValueError as e:
-        print(f"Error during face comparison: {e}")
+        if not results:
+            return None
+
+        live_vec = np.array(results[0]["embedding"], dtype=np.float32)
+        best_match_id = None
+        min_dist = threshold 
+
+        # 2. Optimized Comparison
+        for visitor_id, stored_vec in knowledge_base.items():
+            # Check for shape mismatch to prevent runtime crashes
+            if live_vec.shape != stored_vec.shape:
+                continue
+                
+            dist = cosine(live_vec, stored_vec)
+            
+            if dist < min_dist:
+                min_dist = dist
+                best_match_id = visitor_id
+
+        return best_match_id
+
+    except Exception as e:
+        print(f"[Vision] Recognition Error: {e}")
         return None
-
-
-# given a new image and a list of images of a person
-# returns the amount of images that match out of total given (matches, total)
-def validate(img_path: str, imgs: list[str]) -> tuple:
-    count: int = 0
-    
-    for path in imgs:
-        results = compare_faces(img_path, path)
-
-        if results != None and results['verified']:
-            count += 1
-
-    return (count, len(imgs))
-
-
-# prints results from compare_faces
-def printResults(result):
-    print(f"Same person: {result['verified']}")
-    print(f"Distance: {result['distance']}")
-    print(f"Threshold: {result['threshold']}")
-    print(f"Model: {result['model']}")
-    print(f"Detector: {result['detector_backend']}")
-    
-    # Interpretation
-    if result['verified']:
-        print("✅ Same person")
-    else:
-        print("❌ Different person")

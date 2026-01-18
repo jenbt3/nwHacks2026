@@ -1,23 +1,19 @@
+from datetime import datetime
+from typing import Optional
 import google.generativeai as genai
-from ..core.config import settings # Use settings instead of os.getenv
+from backend.core.config import settings 
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
-# Define the "Companion Persona"
 SYSTEM_INSTRUCTION = """
 You are 'The Bridge', a gentle, empathetic AI companion for an Alzheimer's patient. 
 Your goal is to whisper context to them when a visitor arrives, helping them maintain their dignity.
 
 RULES:
-1. EMPATHY FIRST: Use a warm, calm, and soothing tone.
-2. NO CORRECTIONS: Never tell the patient they are wrong or have forgotten something. 
-3. BREVITY: Keep scripts under 20 words. The patient should not be overwhelmed.
-4. MEMORY ANCHORS: Always include the specific fact provided about the visitor.
-5. CONTEXT: If they were here recently, mention it naturally (e.g., 'back again').
-
-OUTPUT FORMAT:
-Provide ONLY the spoken script. No stage directions or labels.
-Example: 'Look, it's your grandson Mark. He's back again with that new college book he's reading.'
+1. NO CORRECTIONS: Never tell the patient they are wrong or have forgotten something. 
+2. BREVITY: Keep scripts under 20 words. No exceptions.
+3. MEMORY ANCHORS: Weave the memory anchor naturally into the greeting.
+4. OUTPUT: Provide ONLY the spoken text. No quotes, no stage directions, no labels.
 """
 
 class GeminiService:
@@ -34,34 +30,35 @@ class GeminiService:
         anchor: str, 
         last_visit: Optional[datetime] = None
     ) -> str:
-        """Generates a gentle context-aware script for the patient."""
-        
-        # Calculate temporal context
-        time_context = ""
+        # Calculate precise temporal context for 'social dignity' logic
+        time_context = "first time seeing them today"
         if last_visit:
             diff = datetime.now() - last_visit
-            if diff.seconds < 3600:
-                time_context = "They were just here a moment ago."
+            if diff.total_seconds() < 3600:
+                time_context = "they were just here a few minutes ago"
             elif diff.days == 0:
-                time_context = "They visited earlier today."
+                time_context = "they visited earlier this morning"
 
-        prompt = f"""
-        Visitor: {name}
-        Relationship: {relationship}
-        Memory Anchor: {anchor}
-        Context: {time_context}
-        
-        Generate the whisper.
-        """
+        # Structured prompt to force compliance with brevity rules
+        prompt = (
+            f"Visitor: {name}\n"
+            f"Relationship: {relationship}\n"
+            f"Anchor Fact: {anchor}\n"
+            f"Recent History: {time_context}\n\n"
+            "Task: Generate a one-sentence whisper for the patient."
+        )
 
         try:
-            # Note: We use the async-safe call if using a library that supports it, 
-            # otherwise standard generate_content is fine for this low-volume project.
-            response = self.model.generate_content(prompt)
+            response = await self.model.generate_content_async(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=40, # Physical limit to enforce brevity
+                    temperature=0.7
+                )
+            )
             return response.text.strip()
         except Exception as e:
-            print(f"Gemini API Error: {e}")
-            return f"Look, {name} is here to see you." # Safe fallback
+            # Empathetic fallback that maintains persona
+            return f"It's {name} coming in to say hello. They're {relationship.lower()}."
 
-# Initialize singleton
 gemini_service = GeminiService()

@@ -1,51 +1,136 @@
-const BACKEND_IP = "localhost:8000"; // Replace with your Pi's IP for testing
-const ws = new WebSocket(`ws://${BACKEND_IP}/ws/caregiver`);
+const BACKEND_IP = "localhost:8000"; 
+let ws;
+let reconnectInterval = 5000;
 
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    
-    if (data.type === "WANDERING_DETECTED") {
-        const banner = document.getElementById('alert-banner');
-        banner.classList.remove('hidden');
-        setTimeout(() => banner.classList.add('hidden'), 15000);
-    } 
-    
-    if (data.type === "DETECTION") {
-        addVisitorEntry(data.name, data.relationship);
-    }
-};
+function connect() {
+    ws = new WebSocket(`ws://${BACKEND_IP}/ws/alerts`);
+
+    ws.onopen = () => {
+        console.log("Connected to Cognitive Bridge System");
+        const status = document.getElementById('status-indicator');
+        if (status) {
+            status.innerText = "ONLINE";
+            status.style.color = "#10b981";
+        }
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === "WANDERING_DETECTED") {
+            const banner = document.getElementById('alert-banner');
+            if (banner) {
+                banner.classList.remove('hidden');
+                banner.querySelector('p').innerText = data.message || "Patient near exit!";
+                if (data.priority !== "HIGH") {
+                    setTimeout(() => banner.classList.add('hidden'), 10000);
+                }
+            }
+        } 
+        
+        if (data.type === "DETECTION") {
+            addVisitorEntry(data.name, data.relationship_type);
+        }
+    };
+
+    ws.onclose = () => {
+        const status = document.getElementById('status-indicator');
+        if (status) {
+            status.innerText = "OFFLINE - RETRYING";
+            status.style.color = "#ef4444";
+        }
+        setTimeout(connect, reconnectInterval);
+    };
+}
 
 function addVisitorEntry(name, relation) {
     const log = document.getElementById('visitor-log');
+    if (!log) return;
+
     const entry = document.createElement('div');
-    entry.className = "visitor-entry flex items-center justify-between p-4 bg-white/50 rounded-xl border border-white/40 shadow-sm";
+    entry.className = "flex justify-between items-center p-4 bg-white/50 rounded-xl border border-white/20 mb-2";
+    
     entry.innerHTML = `
         <div class="flex items-center gap-4">
-            <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold">
-                ${name[0]}
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                ${name ? name[0] : '?'}
             </div>
             <div>
-                <p class="font-bold text-slate-800">${name}</p>
-                <p class="text-xs text-slate-500 uppercase font-semibold">${relation}</p>
+                <p class="font-bold text-slate-800">${name || 'Unknown'}</p>
+                <p class="text-xs text-slate-500 uppercase font-semibold">${relation || 'Visitor'}</p>
             </div>
         </div>
-        <span class="text-xs font-medium text-slate-400">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+        <span class="text-xs font-medium text-slate-400">
+            ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </span>
     `;
+    
     log.prepend(entry);
-    if (log.querySelector('p.italic')) log.querySelector('p.italic').remove();
+    const emptyMsg = log.querySelector('p.italic');
+    if (emptyMsg) emptyMsg.remove();
 }
 
-// Joystick Control
+// Enrollment Logic: Using 'enroll-form' to match index.html
+const enrollForm = document.getElementById('enroll-form');
+if (enrollForm) {
+    enrollForm.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const mockEncoding = "base64_encoded_vector_here"; 
 
-const joystick = nipplejs.create({
-    zone: document.getElementById('joystick-zone'),
-    mode: 'static',
-    position: { right: '50%', bottom: '50%' },
-    color: '#3b82f6',
-    size: 100
-});
+        const payload = {
+            name: document.getElementById('name').value,
+            relationship_type: document.getElementById('relationship_type').value, 
+            memory_anchor: document.getElementById('anchor').value,
+            encoding: mockEncoding
+        };
 
-joystick.on('move', (evt, data) => {
-    // Throttling or debounce here for servo motor performance
-    console.log("Moving camera:", data.angle.degree);
-});
+        try {
+            const response = await fetch(`http://${BACKEND_IP}/people/enroll`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                alert("Visitor Enrolled! Note: Restart the Raspberry Pi to sync new face data.");
+                e.target.reset();
+            }
+        } catch (err) {
+            console.error("Enrollment failed:", err);
+        }
+    };
+}
+
+const joystickZone = document.getElementById('joystick-zone');
+if (joystickZone) {
+    const manager = nipplejs.create({
+        zone: joystickZone,
+        mode: 'static',
+        position: { right: '50%', bottom: '50%' },
+        color: '#3b82f6',
+        size: 100
+    });
+
+    manager.on('move', (evt, data) => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: "CAMERA_CONTROL",
+                direction: data.angle.degree,
+                distance: data.force
+            }));
+        }
+    });
+
+    manager.on('end', () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: "CAMERA_CONTROL",
+                direction: 0,
+                distance: 0
+            }));
+        }
+    });
+}
+
+connect();

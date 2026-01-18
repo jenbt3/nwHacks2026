@@ -1,69 +1,69 @@
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import StreamingResponse, HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from datetime import datetime
-import cv2
+import logging
+import json
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from backend.core.websocket import manager 
+from backend.api import people, alerts, scripts
+from backend.db.database import engine, Base
 
+# Absolute import as per your directory structure
+from backend.motor_controller_integration.motor_controller import motor_bridge
 
-from .db.database import engine, Base, get_db
-from .db.models import Visitor, Visit
-from .services.gemini import gemini_service
-from .services.elevenlabs import speech_service
-from .core.websocket import manager # Correct import
-from .api import people, alerts, scripts # Import routers
-from .camera.pi_backend import generate_frames 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("bridge_main")
 
-app = FastAPI(title="Cognitive Bridge API")
+app = FastAPI(title="Cognitive Bridge API", version="1.0.0")
 
-# Include Modular Routers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+async def startup_event():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database initialized and tables verified.")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await engine.dispose()
+    logger.info("Database connections closed. Goodbye.")
+
 app.include_router(people.router)
 app.include_router(alerts.router)
 app.include_router(scripts.router)
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+@app.websocket("/ws/alerts")
+async def websocket_endpoint(websocket: WebSocket):
+    """Real-time bridge for alerts, logs, and camera motor control."""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Handle incoming JSON from main.js joystick
+            message = await websocket.receive_text()
+            try:
+                data = json.loads(message)
+                
+                if data.get("type") == "CAMERA_CONTROL":
+                    angle = data.get("direction", 0)
+                    force = data.get("distance", 0)
+                    
+                    # Relay to the hardware bridge
+                    motor_bridge.process_joystick(angle, force)
+            except json.JSONDecodeError:
+                # Fallback for keep-alive text if necessary
+                pass
+                
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        logger.info("Caregiver dashboard disconnected.")
+    except Exception as e:
+        logger.error(f"WebSocket Error: {e}")
 
-@app.post("/detect/{visitor_id}")
-async def handle_detection(visitor_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Visitor).where(Visitor.id == visitor_id))
-    visitor = result.scalars().first()
-    
-    if not visitor:
-        raise HTTPException(status_code=404, detail="Visitor not found")
-
-    # Fetch last visit before logging new one
-    last_visit_result = await db.execute(
-        select(Visit.timestamp)
-        .where(Visit.visitor_id == visitor_id)
-        .order_by(Visit.timestamp.desc())
-        .limit(1)
-    )
-    last_visit_timestamp = last_visit_result.scalars().first()
-
-    # Log new visit
-    new_visit = Visit(visitor_id=visitor.id)
-    db.add(new_visit)
-    await db.commit()
-
-    # FIX: Pass the timestamp to Gemini
-    script = await gemini_service.generate_whisper(
-        name=visitor.name,
-        relationship=visitor.relationship,
-        anchor=visitor.memory_anchor,
-        last_visit=last_visit_timestamp # Mapped correctly now
-    )
-
-    audio_stream = await speech_service.stream_whisper(script)
-    return StreamingResponse(audio_stream, media_type="audio/mpeg")
-
-
-@app.get("/video")
-async def video():
-    """Video streaming endpoint"""
-    return StreamingResponse(
-        generate_frames(),
-        media_type="multipart/x-mixed-replace; boundary=frame"
-    )
+@app.get("/")
+async def root():
+    return {"status": "online", "project": "Cognitive Bridge"}
