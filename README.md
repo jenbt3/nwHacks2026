@@ -1,4 +1,4 @@
-# Cognitive Bridge - Local Setup Guide
+# Local Setup Guide
 
 This project consists of a FastAPI backend and a dashboard frontend. Here's how to run it locally.
 
