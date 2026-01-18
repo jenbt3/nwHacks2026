@@ -6,7 +6,7 @@ from deepface import DeepFace
 from scipy.spatial.distance import cosine
 
 BACKEND_URL = "http://localhost:8000"
-MODEL_NAME = "VGG-Face"
+MODEL_NAME = "Facenet512"
 
 def load_knowledge_base():
     """Simulates the sync.py logic"""
@@ -35,10 +35,10 @@ def run_local_test():
     if not kb: return
 
     # Warm up DeepFace
-    print("[Vision] Initializing VGG-Face...")
+    print("[Vision] Initializing Facenet512...")
     DeepFace.represent(np.zeros((224, 224, 3), dtype=np.uint8), model_name=MODEL_NAME, enforce_detection=False)
 
-    cap = cv2.VideoCapture(0) # Use laptop webcam
+    cap = cv2.VideoCapture(1) # Use laptop webcam
     
     print("--- SYSTEM LIVE: PRESS 'Q' TO QUIT ---")
     
@@ -61,7 +61,8 @@ def run_local_test():
                     face_roi, 
                     model_name=MODEL_NAME, 
                     detector_backend='skip', # Skip since we cropped manually
-                    enforce_detection=False
+                    enforce_detection=False,
+                    align=True
                 )
                 
                 if results:
@@ -72,7 +73,7 @@ def run_local_test():
                         dist = cosine(live_vec, data['vec'])
                         
                         # Threshold 0.35 - 0.40 is usually good for VGG-Face
-                        if dist < 0.38:
+                        if dist < 0.45:
                             cv2.putText(frame, f"MATCH: {data['name']}", (x, y-10), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
                             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)

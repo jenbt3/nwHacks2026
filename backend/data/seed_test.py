@@ -6,8 +6,8 @@ from deepface import DeepFace
 # Configuration
 BACKEND_URL = "http://localhost:8000"
 IMAGE_PATH = "test_face.jpg" # Ensure this file exists in your directory
-NAME = "Sujal Kapoor"
-RELATIONSHIP = "Lead Dev"
+NAME = "Sujal K"
+RELATIONSHIP = "Lead Dev w beard"
 ANCHOR = "He is a 3rd-year CS student at McMaster."
 
 def enroll_test_user():
@@ -16,7 +16,7 @@ def enroll_test_user():
         # 1. Generate embedding using the VGG-Face model
         results = DeepFace.represent(
             img_path=IMAGE_PATH, 
-            model_name="VGG-Face",
+            model_name="Facenet512",
             detector_backend="opencv",
             enforce_detection=True
         )

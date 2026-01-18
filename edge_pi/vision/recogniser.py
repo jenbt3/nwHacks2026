@@ -3,11 +3,11 @@ from scipy.spatial.distance import cosine
 import numpy as np
 
 # Use 'VGG-Face' as per architecture
-MODEL_NAME = "VGG-Face" 
+MODEL_NAME = "Facenet512" 
 
 def warm_up_model():
     """Pre-loads the model into RAM to ensure <500ms inference on first run."""
-    print("[Vision] Warming up VGG-Face model...")
+    print("[Vision] Warming up Facenet512 model...")
     # A tiny black image to trigger the internal model load
     fake_img = np.zeros((224, 224, 3), dtype=np.uint8)
     try:
@@ -28,7 +28,8 @@ def identify_face(face_roi, knowledge_base, threshold=0.35):
             img_path=face_roi, 
             model_name=MODEL_NAME,
             enforce_detection=False,
-            detector_backend="skip" 
+            detector_backend="skip",
+            align=True
         )
         
         if not results:
