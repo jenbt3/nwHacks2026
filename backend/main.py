@@ -1,19 +1,23 @@
-from fastapi import FastAPI
-from .db.database import engine, Base
-from .core.websocket import manager
-from .api import people, alerts, scripts
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+# Change relative (.) to absolute (backend.)
+from backend.core.websocket import manager 
+from backend.api import people, alerts
 
-app = FastAPI(title="Cognitive Bridge API")
+app = FastAPI()
 
-# Modular Routers - The single source of truth
+# Include routers
 app.include_router(people.router)
 app.include_router(alerts.router)
-app.include_router(scripts.router)
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+@app.websocket("/ws/alerts")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text() 
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
-# The logic for /detect is now exclusively in scripts.py 
-# to avoid 'Split Brain' behavior between Pi and Dashboard.
+@app.get("/")
+async def root():
+    return {"message": "nwHacks 2026 Bridge API is Online"}

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks
 from datetime import datetime
-# Assuming 'manager' is imported from your main WebSocket handler
+from backend.core.websocket import manager
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 

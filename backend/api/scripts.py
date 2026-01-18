@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..db.database import get_db
-from ..services.gemini import gemini_service
-from ..services.elevenlabs import speech_service
+from backend.db.database import get_db
+from backend.services.gemini import gemini_service
+from backend.services.elevenlabs import speech_service
 
 router = APIRouter(prefix="/scripts", tags=["Scripts"])
 

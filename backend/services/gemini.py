@@ -1,5 +1,9 @@
+from datetime import datetime
+from typing import Optional
 import google.generativeai as genai
-from ..core.config import settings # Use settings instead of os.getenv
+
+# Use the absolute import path established in our architecture
+from backend.core.config import settings 
 
 genai.configure(api_key=settings.GEMINI_API_KEY)
 
@@ -22,6 +26,7 @@ Example: 'Look, it's your grandson Mark. He's back again with that new college b
 
 class GeminiService:
     def __init__(self):
+        # model_name choice is good for hackathons: fast and low-latency
         self.model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=SYSTEM_INSTRUCTION
@@ -40,7 +45,7 @@ class GeminiService:
         time_context = ""
         if last_visit:
             diff = datetime.now() - last_visit
-            if diff.seconds < 3600:
+            if diff.total_seconds() < 3600:  # Use total_seconds() for accuracy
                 time_context = "They were just here a moment ago."
             elif diff.days == 0:
                 time_context = "They visited earlier today."
@@ -55,13 +60,13 @@ class GeminiService:
         """
 
         try:
-            # Note: We use the async-safe call if using a library that supports it, 
-            # otherwise standard generate_content is fine for this low-volume project.
-            response = self.model.generate_content(prompt)
+            # Using generate_content_async since this is an async function
+            response = await self.model.generate_content_async(prompt)
             return response.text.strip()
         except Exception as e:
+            # Result-driven error logging for debugging during the demo
             print(f"Gemini API Error: {e}")
-            return f"Look, {name} is here to see you." # Safe fallback
+            return f"Look, {name} is here to see you." 
 
-# Initialize singleton
+# Initialize singleton for the backend
 gemini_service = GeminiService()
