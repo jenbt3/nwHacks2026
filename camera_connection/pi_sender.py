@@ -7,7 +7,7 @@ import struct
 import time
 
 hostIP = '' # IP
-port =  # port
+port = 0000 # port
 
 #connect to backend server
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
