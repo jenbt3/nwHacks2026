@@ -25,12 +25,21 @@
                     <span class="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase">Live</span>
                 </div>
                 
-                <div class="relative aspect-video bg-slate-900 rounded-xl overflow-hidden group shadow-inner">
-                    <div class="absolute inset-0 flex items-center justify-center text-slate-700">
-                        <p>Waiting for Edge Node Stream...</p>
+                <div class="relative aspect-video bg-black rounded-xl overflow-hidden shadow-inner">
+                    <img
+                        id="camera-feed"
+                        src="http://localhost:8000/video"
+                        class="w-full h-full object-cover"
+                        alt="Live Camera Feed"
+                    />
+                    <div id="joystick-zone"
+                        class="absolute bottom-6 right-6 w-32 h-32 rounded-full z-10">
                     </div>
-                    <div id="joystick-zone" class="absolute bottom-6 right-6 w-32 h-32 rounded-full"></div>
                 </div>
+
+
+
+
             </div>
 
             <div class="glass-panel p-6">

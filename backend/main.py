@@ -6,6 +6,10 @@ from backend.core.websocket import manager
 from backend.api import people, alerts, scripts
 from backend.db.database import engine, Base
 
+from fastapi.responses import StreamingResponse
+from backend.camera.pi_backend import generate_frames
+
+
 # Absolute import as per your directory structure
 from backend.motor_controller_integration.motor_controller import motor_bridge
 
@@ -67,3 +71,10 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/")
 async def root():
     return {"status": "online", "project": "Cognitive Bridge"}
+
+@app.get("/video")
+async def video_feed():
+    return StreamingResponse(
+        generate_frames(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )

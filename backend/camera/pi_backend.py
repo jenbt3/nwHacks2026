@@ -1,7 +1,7 @@
 import cv2
 
 def generate_frames():
-    camera = cv2.VideoCapture(1)
+    camera = cv2.VideoCapture(0)
     
     if not camera.isOpened():
         print("Could not open camera")

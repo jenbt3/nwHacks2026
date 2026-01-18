@@ -102,6 +102,21 @@ if (enrollForm) {
     };
 }
 
+// Setup video feed from camera
+const cameraFeed = document.getElementById('camera-feed');
+if (cameraFeed) {
+    const videoUrl = `http://${BACKEND_IP}/video`;
+    cameraFeed.src = videoUrl;
+    
+    cameraFeed.onload = () => {
+        console.log('Camera feed loaded successfully');
+    };
+    
+    cameraFeed.onerror = () => {
+        console.error('Failed to load camera feed. Make sure backend is running on port 8000 and camera is connected.');
+    };
+}
+
 const joystickZone = document.getElementById('joystick-zone');
 if (joystickZone) {
     const manager = nipplejs.create({
