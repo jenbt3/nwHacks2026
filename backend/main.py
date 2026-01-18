@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+import cv2
+
 
 from .db.database import engine, Base, get_db
 from .db.models import Visitor, Visit
@@ -10,6 +12,7 @@ from .services.gemini import gemini_service
 from .services.elevenlabs import speech_service
 from .core.websocket import manager # Correct import
 from .api import people, alerts, scripts # Import routers
+from .camera.pi_backend import generate_frames 
 
 app = FastAPI(title="Cognitive Bridge API")
 
@@ -55,3 +58,12 @@ async def handle_detection(visitor_id: int, db: AsyncSession = Depends(get_db)):
 
     audio_stream = await speech_service.stream_whisper(script)
     return StreamingResponse(audio_stream, media_type="audio/mpeg")
+
+
+@app.get("/video")
+async def video():
+    """Video streaming endpoint"""
+    return StreamingResponse(
+        generate_frames(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
