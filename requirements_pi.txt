@@ -1,0 +1,14 @@
+# Vision & Inference
+opencv-python-headless==4.10.0.84
+deepface==0.0.92
+tf-keras==2.16.0
+scipy==1.13.1
+numpy<2.0.0
+protobuf>=4.21.0,<5.0.0
+
+# Streaming & Networking
+flask==3.0.3
+requests==2.32.3
+
+# Platform Specific
+# Ensure you install libatlas-base-dev via apt-get on the Pi for NumPy support
