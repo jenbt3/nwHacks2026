@@ -2,7 +2,7 @@ import cv2
 import requests
 import time
 import subprocess
-from recogniser import identify_face
+from vision.recogniser import identify_face
 from sync import load_knowledge_base
 
 # Local Constants (Fixed paths for Pi)
