@@ -1,11 +1,7 @@
-// Configuration
 const BACKEND_IP = "localhost:8000"; 
 let ws;
 let reconnectInterval = 5000;
 
-/**
- * WebSocket Management: Real-time alerts, detection logs, and camera control
- */
 function connect() {
     ws = new WebSocket(`ws://${BACKEND_IP}/ws/alerts`);
 
@@ -21,29 +17,23 @@ function connect() {
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         
-        // 1. Handle Wandering Alerts
         if (data.type === "WANDERING_DETECTED") {
             const banner = document.getElementById('alert-banner');
             if (banner) {
                 banner.classList.remove('hidden');
                 banner.querySelector('p').innerText = data.message || "Patient near exit!";
-                
-                // Keep critical (High Priority) alerts visible until manually dismissed
                 if (data.priority !== "HIGH") {
                     setTimeout(() => banner.classList.add('hidden'), 10000);
                 }
             }
         } 
         
-        // 2. Handle Recognition/Detection Logs
         if (data.type === "DETECTION") {
-            // Updated to use relationship_type to match models.py
             addVisitorEntry(data.name, data.relationship_type);
         }
     };
 
     ws.onclose = () => {
-        console.warn("Connection Lost. Retrying in 5s...");
         const status = document.getElementById('status-indicator');
         if (status) {
             status.innerText = "OFFLINE - RETRYING";
@@ -53,9 +43,6 @@ function connect() {
     };
 }
 
-/**
- * Adds a visitor record to the dashboard UI log
- */
 function addVisitorEntry(name, relation) {
     const log = document.getElementById('visitor-log');
     if (!log) return;
@@ -79,49 +66,42 @@ function addVisitorEntry(name, relation) {
     `;
     
     log.prepend(entry);
-    
     const emptyMsg = log.querySelector('p.italic');
     if (emptyMsg) emptyMsg.remove();
 }
 
-/**
- * Enrollment Logic: Sends data to backend and notifies user
- */
-document.getElementById('enroll-form').onsubmit = async (e) => {
-    e.preventDefault();
-    
-    // In a production setup, this would be a real face embedding
-    const mockEncoding = "base64_encoded_vector_here"; 
+// Enrollment Logic: Using 'enroll-form' to match index.html
+const enrollForm = document.getElementById('enroll-form');
+if (enrollForm) {
+    enrollForm.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        const mockEncoding = "base64_encoded_vector_here"; 
 
-    const payload = {
-        name: document.getElementById('name').value,
-        relationship_type: document.getElementById('relationship_type').value, 
-        memory_anchor: document.getElementById('anchor').value,
-        encoding: mockEncoding
-    };
+        const payload = {
+            name: document.getElementById('name').value,
+            relationship_type: document.getElementById('relationship_type').value, 
+            memory_anchor: document.getElementById('anchor').value,
+            encoding: mockEncoding
+        };
 
-    try {
-        const response = await fetch(`http://${BACKEND_IP}/people/enroll`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const response = await fetch(`http://${BACKEND_IP}/people/enroll`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            alert("Visitor Enrolled! Note: Restart the Raspberry Pi to sync new face data.");
-            e.target.reset();
-        } else {
-            const error = await response.json();
-            console.error("Enrollment failed:", error);
+            if (response.ok) {
+                alert("Visitor Enrolled! Note: Restart the Raspberry Pi to sync new face data.");
+                e.target.reset();
+            }
+        } catch (err) {
+            console.error("Enrollment failed:", err);
         }
-    } catch (err) {
-        console.error("Network Error:", err);
-    }
-};
+    };
+}
 
-/**
- * Joystick Functionality: Capture movement and send to Edge Node
- */
 const joystickZone = document.getElementById('joystick-zone');
 if (joystickZone) {
     const manager = nipplejs.create({
@@ -132,11 +112,8 @@ if (joystickZone) {
         size: 100
     });
 
-    // Handle movement (Sending commands to the Pi)
     manager.on('move', (evt, data) => {
         if (ws && ws.readyState === WebSocket.OPEN) {
-            // angle.degree provides 0-360 for direction
-            // force provides distance from center (scaled for speed)
             ws.send(JSON.stringify({
                 type: "CAMERA_CONTROL",
                 direction: data.angle.degree,
@@ -145,7 +122,6 @@ if (joystickZone) {
         }
     });
 
-    // Handle release (Stop the servos)
     manager.on('end', () => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({
@@ -157,5 +133,4 @@ if (joystickZone) {
     });
 }
 
-// Start initial WebSocket connection
 connect();

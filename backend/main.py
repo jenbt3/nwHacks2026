@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.core.websocket import manager 
 from backend.api import people, alerts, scripts
 from backend.db.database import engine, Base
-# Import the motor_bridge instance
+
+# Absolute import as per your directory structure
 from backend.motor_controller_integration.motor_controller import motor_bridge
 
 logging.basicConfig(level=logging.INFO)
@@ -42,16 +43,20 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # We now listen for JSON data (joystick movements)
-            raw_data = await websocket.receive_text()
-            data = json.loads(raw_data)
-            
-            if data.get("type") == "CAMERA_CONTROL":
-                angle = data.get("direction", 0)
-                force = data.get("distance", 0)
+            # Handle incoming JSON from main.js joystick
+            message = await websocket.receive_text()
+            try:
+                data = json.loads(message)
                 
-                # Relay to the motor bridge (Hardware Serial)
-                motor_bridge.process_joystick(angle, force)
+                if data.get("type") == "CAMERA_CONTROL":
+                    angle = data.get("direction", 0)
+                    force = data.get("distance", 0)
+                    
+                    # Relay to the hardware bridge
+                    motor_bridge.process_joystick(angle, force)
+            except json.JSONDecodeError:
+                # Fallback for keep-alive text if necessary
+                pass
                 
     except WebSocketDisconnect:
         manager.disconnect(websocket)
