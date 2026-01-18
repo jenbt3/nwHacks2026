@@ -122,9 +122,8 @@ The application uses SQLite, which is automatically created at `backend/data/bri
 ## Features
 
 - **Visitor Recognition**: Enroll visitors with face recognition
-- **Real-time Alerts**: WebSocket-based alerts for wandering detection
-- **Camera Control**: Joystick-based pan-tilt control (requires hardware)
-- **Memory Anchors**: Store contextual information about visitors
+- **Camera Control**: Joystick-based horizontal movement control (requires hardware)
+- **Memory Anchors**: Stores contextual information about visitors
 
 ## Troubleshooting
 
