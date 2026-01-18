@@ -15,8 +15,6 @@ client_socket.connect((hostIP, port)) #change to your server ip and port
 
 #setup camera; 0 is default camera
 cam = cv2.VideoCapture(0)
-cam.set(3, 640)
-cam.set(4, 480)
 
 
 try:

@@ -1,7 +1,6 @@
 import cv2
-import datetime
 
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(1)
 
 if not camera.isOpened():
     print("could not open camera")
@@ -13,10 +12,10 @@ while True:
     ret, frame = camera.read()
     
     if not ret:
-        print("Error reading frame")
+        print("error reading frame")
         break
     
-    cv2.imshow('Live Camera', frame)
+    cv2.imshow('live Camera', frame)
     
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
